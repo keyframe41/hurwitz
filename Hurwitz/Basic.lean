@@ -8,6 +8,7 @@ module
 public import Mathlib.NumberTheory.Real.Irrational
 public import Mathlib.Tactic.LinearCombination
 public import Mathlib.Tactic.NormNum.Prime
+public import Mathlib.Algebra.Order.Group.Unbundled.Basic
 
 /-!
 # Hurwitz's Theorem in Diophantine Approximation
@@ -86,42 +87,27 @@ structure IsFarey (ξ : ℝ) (p q r s : ℤ) : Prop where
 def IsGoodApprox (ξ : ℝ) (x y : ℤ) : Prop :=
   0 < y ∧ |(y : ℝ) * ξ - x| * y * √5 < 1
 
--- Frequently used lemmas about sqrt 5
 private lemma sq_sqrt_five : √5 ^ 2 = 5 := sq_sqrt (by norm_num)
 
-private lemma two_lt_sqrt_five : 2 < √5 := by
-  nlinarith [sq_sqrt_five, sqrt_nonneg 5]
-
-private theorem irrational_sqrt_five : Irrational (√5) := by
-  have h : Nat.Prime 5 := by norm_num
-  exact h.irrational_sqrt
-
 -- A lemma to bound the denominators of a Farey interval given both endpoints fail the Hurwitz bound
-private theorem aux₀ {a b c d : ℤ}
-    (hdet : b * c - a * d = 1)
-    (hA : 1 ≤ √5 * b * ((b : ℝ) * ξ - a))
-    (hB : 1 ≤ √5 * d * ((c : ℝ) - d * ξ)) :
-    (b : ℝ) ^ 2 + (d : ℝ) ^ 2 ≤ √5 * (b * d) := by
+private theorem aux₀ {a b c d : ℤ} (hdet : b * c - a * d = 1) (hA : 1 ≤ √5 * b * ((b : ℝ) * ξ - a))
+    (hB : 1 ≤ √5 * d * ((c : ℝ) - d * ξ)) : (b : ℝ) ^ 2 + (d : ℝ) ^ 2 ≤ √5 * (b * d) := by
   have hdetR : (b : ℝ) * c - a * d = 1 := mod_cast hdet
-  have hdiff : (d : ℝ) * (b * ξ - a) + b * (c - d * ξ) = 1 := by linear_combination hdetR
-  have H : (d : ℝ) ^ 2 * √5 * b * (b * ξ - a) +
-            b ^ 2 * √5 * d * (c - d * ξ) = √5 * b * d := by
-    linear_combination hdiff * (√5 * b * d)
+  have H : (d : ℝ) ^ 2 * √5 * b * (b * ξ - a) + b ^ 2 * √5 * d * (c - d * ξ) = √5 * b * d := by
+    linear_combination hdetR * (√5 * b * d)
   have h1 := mul_le_mul_of_nonneg_left hA (sq_nonneg (d : ℝ))
   have h2 := mul_le_mul_of_nonneg_left hB (sq_nonneg (b : ℝ))
   linarith
 
 /- Another lemma used to bound the denominators of a Farey interval given the first,
 which can be used both ways to derive a contradiction -/
-private theorem aux₁ {b d : ℝ}
-    (hb : 0 < b) (h : b ^ 2 + d ^ 2 ≤ √5 * (b * d)) :
+private theorem aux₁ {b d : ℝ} (hb : 0 < b) (h : b ^ 2 + d ^ 2 ≤ √5 * (b * d)) :
     (√5 - 1) * b ≤ 2 * d ∧ 2 * d ≤ (√5 + 1) * b := by
   have hprod : (2 * d - (√5 - 1) * b) * (2 * d - (√5 + 1) * b) ≤ 0 := by
-    nlinarith [sq_sqrt_five, two_lt_sqrt_five]
+    nlinarith [sq_sqrt_five]
   constructor <;> nlinarith
 
-private theorem aux₁' {b d : ℝ}
-    (hd : 0 < d) (h : b ^ 2 + d ^ 2 ≤ √5 * (b * d)) :
+private theorem aux₁' {b d : ℝ} (hd : 0 < d) (h : b ^ 2 + d ^ 2 ≤ √5 * (b * d)) :
     (√5 - 1) * d ≤ 2 * b ∧ 2 * b ≤ (√5 + 1) * d := by
   apply aux₁ hd
   linarith
@@ -157,7 +143,7 @@ private lemma sqrt_five_mul_le_of_not_isGoodApprox_right {c d : ℤ} (hd : 0 < d
 
 private lemma two_mul_ne_sqrt_five_sub_one_mul {b d : ℤ} (hb : 0 < b)
     (h : 2 * (d : ℝ) = (√5 - 1) * b) : False := by
-  refine irrational_sqrt_five ⟨(2 * d + b) / b, ?_⟩
+  refine Nat.prime_five.irrational_sqrt ⟨(2 * d + b) / b, ?_⟩
   have hb0 : (b : ℝ) ≠ 0 := mod_cast (ne_of_gt hb)
   push_cast
   rw [div_eq_iff hb0]
@@ -166,17 +152,13 @@ private lemma two_mul_ne_sqrt_five_sub_one_mul {b d : ℤ} (hb : 0 < b)
 /-! ### Mediant properties -/
 
 private lemma sub_eq_one_div_mul {p q r s : ℤ} (hq : 0 < q) (hs : 0 < s)
-    (hdet : q * r - p * s = 1) :
-    (r : ℝ) / s - p / q = 1 / ((q : ℝ) * s) := by
-  have hqR : (0 : ℝ) < q := mod_cast hq
-  have hsR : (0 : ℝ) < s := mod_cast hs
+    (hdet : q * r - p * s = 1) : (r : ℝ) / s - p / q = 1 / ((q : ℝ) * s) := by
   have hdetR : (q : ℝ) * r - p * s = 1 := mod_cast hdet
   field_simp
   linear_combination hdetR
 
 private lemma left_lt_mediant {p q r s : ℤ} (hq : 0 < q) (hs : 0 < s)
-    (hdet : q * r - p * s = 1) :
-    (p : ℝ) / q < ((p + r : ℤ) : ℝ) / ((q + s : ℤ) : ℝ) := by
+    (hdet : q * r - p * s = 1) : (p : ℝ) / q < ((p + r : ℤ) : ℝ) / ((q + s : ℤ) : ℝ) := by
   have hqR : (0 : ℝ) < q := mod_cast hq
   have hsR : (0 : ℝ) < s := mod_cast hs
   have hqsR : (0 : ℝ) < q + s := by linarith
@@ -186,8 +168,7 @@ private lemma left_lt_mediant {p q r s : ℤ} (hq : 0 < q) (hs : 0 < s)
   linarith
 
 private lemma mediant_lt_right {p q r s : ℤ} (hq : 0 < q) (hs : 0 < s)
-    (hdet : q * r - p * s = 1) :
-    ((p + r : ℤ) : ℝ) / ((q + s : ℤ) : ℝ) < (r : ℝ) / s := by
+    (hdet : q * r - p * s = 1) : ((p + r : ℤ) : ℝ) / ((q + s : ℤ) : ℝ) < (r : ℝ) / s := by
   have hqR : (0 : ℝ) < q := mod_cast hq
   have hsR : (0 : ℝ) < s := mod_cast hs
   have hqsR : (0 : ℝ) < q + s := by linarith
@@ -198,8 +179,7 @@ private lemma mediant_lt_right {p q r s : ℤ} (hq : 0 < q) (hs : 0 < s)
 
 private lemma ne_mediant (hξ : Irrational ξ) {p q r s : ℤ} :
     ξ ≠ ((p + r : ℤ) : ℝ) / ((q + s : ℤ) : ℝ) := by
-  have hcast : ((p + r : ℤ) : ℝ) / ((q + s : ℤ) : ℝ)
-      = (((p + r : ℤ) / (q + s : ℤ) : ℚ) : ℝ) := by
+  have hcast : ((p + r : ℤ) : ℝ) / ((q + s : ℤ) : ℝ) = (((p + r : ℤ) / (q + s : ℤ) : ℚ) : ℝ) := by
     push_cast; ring
   rw [hcast]
   exact hξ.ne_rat _
@@ -208,8 +188,7 @@ private lemma ne_mediant (hξ : Irrational ξ) {p q r s : ℤ} :
 namespace IsFarey
 
 private theorem of_lt_mediant {p q r s : ℤ} (h : IsFarey ξ p q r s)
-    (hm : ξ < ((p + r : ℤ) : ℝ) / ((q + s : ℤ) : ℝ)) :
-    IsFarey ξ p q (p + r) (q + s) where
+    (hm : ξ < ((p + r : ℤ) : ℝ) / ((q + s : ℤ) : ℝ)) : IsFarey ξ p q (p + r) (q + s) where
   q_pos := h.q_pos
   s_pos := add_pos h.q_pos h.s_pos
   det := by linear_combination h.det
@@ -217,8 +196,7 @@ private theorem of_lt_mediant {p q r s : ℤ} (h : IsFarey ξ p q r s)
   right := hm
 
 private theorem of_mediant_lt {p q r s : ℤ} (h : IsFarey ξ p q r s)
-    (hm : ((p + r : ℤ) : ℝ) / ((q + s : ℤ) : ℝ) < ξ) :
-    IsFarey ξ (p + r) (q + s) r s where
+    (hm : ((p + r : ℤ) : ℝ) / ((q + s : ℤ) : ℝ) < ξ) : IsFarey ξ (p + r) (q + s) r s where
   q_pos := add_pos h.q_pos h.s_pos
   s_pos := h.s_pos
   det := by linear_combination h.det
@@ -228,24 +206,11 @@ private theorem of_mediant_lt {p q r s : ℤ} (h : IsFarey ξ p q r s)
 
 /-! ### Key step: one of three consecutive Farey endpoints is good -/
 
-private theorem abs_sub_left_lt {p q r s : ℤ} (h : IsFarey ξ p q r s) :
-    |ξ - (p : ℝ) / q| < 1 / ((q : ℝ) * s) := by
-  have hpos : ξ - (p : ℝ) / q > 0 := by linarith [h.left]
-  rw [abs_of_pos hpos, ← sub_eq_one_div_mul h.q_pos h.s_pos h.det]
-  linarith [h.right]
-
-private theorem abs_sub_right_lt {p q r s : ℤ} (h : IsFarey ξ p q r s) :
-    |ξ - (r : ℝ) / s| < 1 / ((q : ℝ) * s) := by
-  have hneg : ξ - (r : ℝ) / s < 0 := by linarith [h.right]
-  rw [abs_of_neg hneg, ← sub_eq_one_div_mul h.q_pos h.s_pos h.det]
-  linarith [h.left]
-
-private theorem abs_sub_mediant_lt {p q r s : ℤ} (h : IsFarey ξ p q r s) :
-    |ξ - ((p + r : ℤ) : ℝ) / ((q + s : ℤ) : ℝ)| < 1 / ((q : ℝ) * s) := by
+private theorem abs_sub_lt_of_mem {p q r s : ℤ} (h : IsFarey ξ p q r s) {z : ℝ}
+    (hl : (p : ℝ) / q ≤ z) (hr : z ≤ (r : ℝ) / s) :
+    |ξ - z| < 1 / ((q : ℝ) * s) := by
   rw [abs_sub_lt_iff, ← sub_eq_one_div_mul h.q_pos h.s_pos h.det]
-  constructor
-  · linarith [h.right, left_lt_mediant h.q_pos h.s_pos h.det]
-  · linarith [h.left, mediant_lt_right h.q_pos h.s_pos h.det]
+  exact ⟨by linarith [h.right], by linarith [h.left]⟩
 
 /-- If `IsFarey ξ p q r s`, then at least one of `p/q`, `r/s`, and the mediant
 `(p + r)/(q + s)` satisfies the Hurwitz bound. -/
@@ -289,10 +254,12 @@ theorem isGoodApprox_or (hξ : Irrational ξ) {p q r s : ℤ} (h : IsFarey ξ p 
 the bracket. -/
 theorem exists_isGoodApprox (hξ : Irrational ξ) {p q r s : ℤ} (h : IsFarey ξ p q r s) :
     ∃ x y : ℤ, IsGoodApprox ξ x y ∧ |ξ - (x : ℝ) / y| < 1 / ((q : ℝ) * s) := by
+  have hpr := (h.left.trans h.right).le
   rcases h.isGoodApprox_or hξ with hg | hg | hg
-  · exact ⟨p, q, hg, h.abs_sub_left_lt⟩
-  · exact ⟨r, s, hg, h.abs_sub_right_lt⟩
-  · exact ⟨p + r, q + s, hg, h.abs_sub_mediant_lt⟩
+  · exact ⟨p, q, hg, h.abs_sub_lt_of_mem le_rfl hpr⟩
+  · exact ⟨r, s, hg, h.abs_sub_lt_of_mem hpr le_rfl⟩
+  · exact ⟨p + r, q + s, hg, h.abs_sub_lt_of_mem
+      (left_lt_mediant h.q_pos h.s_pos h.det).le (mediant_lt_right h.q_pos h.s_pos h.det).le⟩
 
 private theorem exists_next (hξ : Irrational ξ) {p q r s : ℤ} (h : IsFarey ξ p q r s) :
     ∃ p' q' r' s' : ℤ, IsFarey ξ p' q' r' s' ∧ q + s < q' + s' := by
@@ -343,23 +310,11 @@ private lemma isGoodApprox_div_bound {x y : ℤ} (hg : IsGoodApprox ξ x y) :
 private lemma isGoodApprox_bound_rat {x y : ℤ} (hg : IsGoodApprox ξ x y) :
     |ξ - (((x : ℚ) / y : ℚ) : ℝ)| < 1 / (√5 * (((x : ℚ) / y : ℚ).den : ℝ) ^ 2) := by
   have ⟨hy_pos, _⟩ := hg
-  set q : ℚ := (x : ℚ) / y with hq
-  have hden_dvd : (q.den : ℤ) ∣ y := by
-    rw [hq]
-    norm_cast
-    exact Rat.den_dvd x y
-  have hden_le : (q.den : ℝ) ≤ (y : ℝ) := mod_cast (Int.le_of_dvd hy_pos hden_dvd)
-  have hden_pos : 0 < (q.den : ℝ) := mod_cast q.pos
-  have hcast : q = (x : ℝ) / y := by
-    rw [hq]
-    norm_cast
-  rw [hcast]
+  have hden_le : ((((x : ℚ) / y : ℚ).den : ℝ)) ≤ (y : ℝ) :=
+    mod_cast Int.le_of_dvd hy_pos (Rat.den_dvd x y)
+  push_cast
   refine lt_of_lt_of_le (isGoodApprox_div_bound hg) ?_
-  apply one_div_le_one_div_of_le (by positivity)
-  have hsq : (q.den : ℝ) ^ 2 ≤ (y : ℝ) ^ 2 := by
-    apply pow_le_pow_left₀ hden_pos.le hden_le
-  have h5 : (0 : ℝ) < √5 := by linarith [two_lt_sqrt_five]
-  nlinarith
+  gcongr
 
 private lemma add_le_two_mul_mul {q s : ℤ} (hq : 0 < q) (hs : 0 < s) :
     q + s ≤ 2 * (q * s) := by nlinarith
@@ -374,13 +329,11 @@ theorem exists_rat_isGoodApprox_and_lt (hξ : Irrational ξ) (t : ℚ) :
   obtain ⟨x, y, hgood, hbound⟩ := hF.exists_isGoodApprox hξ
   refine ⟨(x : ℚ) / (y : ℚ), isGoodApprox_bound_rat hgood, ?_⟩
   have hqs_ge : (q : ℝ) + s ≤ 2 * ((q : ℝ) * s) := mod_cast (add_le_two_mul_mul hF.q_pos hF.s_pos)
-  have hcast : (n : ℝ) ≤ (q : ℝ) + s := mod_cast hqs
   have hn' : (2 : ℝ) < ((q : ℝ) + s) * |ξ - (t : ℝ)| := by
-    have hn'' := hn.trans_le hcast
+    have hn'' := hn.trans_le (mod_cast hqs : (n : ℝ) ≤ (q : ℝ) + s)
     rw [div_lt_iff₀ hpos] at hn''
     linarith
-  have hcast' : ((((x : ℚ) / (y : ℚ)) : ℚ) : ℝ) = (x : ℝ) / (y : ℝ) := by norm_cast
-  rw [hcast']
+  push_cast
   have hqsR : 0 < (q : ℝ) * s := mod_cast (mul_pos hF.q_pos hF.s_pos)
   have hfinal : 1 / ((q : ℝ) * s) < |ξ - (t : ℝ)| := by
     rw [div_lt_iff₀ hqsR]
@@ -389,7 +342,7 @@ theorem exists_rat_isGoodApprox_and_lt (hξ : Irrational ξ) (t : ℚ) :
 
 end Hurwitz
 
-/-- **Hurwitz's theorem.** For irrational `ξ`, the set `{q : ℚ | |ξ - q| < 1/(√5*q.den^2)}`
+/-- **Hurwitz's theorem.** For irrational `ξ`, the set `{q : ℚ | |ξ - q| < 1 / (√5 * q.den ^ 2)}`
 is infinite. -/
 theorem infinite_rat_abs_sub_lt_one_div_sqrt_five_mul_den_sq_of_irrational (hξ : Irrational ξ) :
     {t : ℚ | |ξ - t| < 1 / (√5 * (t.den : ℝ) ^ 2)}.Infinite := by
